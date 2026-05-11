@@ -1,4 +1,3 @@
-from http.server import BaseHTTPRequestHandler
 import requests
 import json
 from urllib.parse import urlparse, parse_qs, unquote
@@ -7,12 +6,10 @@ from urllib.parse import urlparse, parse_qs, unquote
 def get_authorization_token():
     session = requests.Session()
 
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "text/html"
-    }
-
-    session.get("https://www.rooter.gg/", headers=headers)
+    session.get(
+        "https://www.rooter.gg/",
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
 
     user_auth = session.cookies.get("user_auth")
 
@@ -33,8 +30,62 @@ def fetch_bgmi(uid):
         if not token:
             return {
                 "status": False,
+                "message": "Token failed"
+            }
+
+        url = f"https://bazaar.rooter.io/order/getUnipinUsername?gameCode=BGMI_IN&id={uid}"
+
+        response = session.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "Mozilla/5.0"
+            }
+        )
+
+        data = response.json()
+
+        if data.get("transaction") == "SUCCESS":
+            return {
+                "status": True,
                 "developer": "@R3XTRON",
-                "message": "Token fetch failed"
+                "username": data["unipinRes"]["username"],
+                "uid": uid,
+                "server": "BGMI",
+                "region": "India"
+            }
+
+        return {
+            "status": False,
+            "message": "UID not found"
+        }
+
+    except:
+        return {
+            "status": False,
+            "message": "Request failed"
+        }
+
+
+# Vercel looks for this
+def handler(request):
+    uid = request.args.get("uid")
+
+    if not uid:
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "status": False,
+                "message": "UID required"
+            })
+        }
+
+    result = fetch_bgmi(uid)
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(result)
+    }                "message": "Token fetch failed"
             }
 
         url = f"https://bazaar.rooter.io/order/getUnipinUsername?gameCode=BGMI_IN&id={uid}"
